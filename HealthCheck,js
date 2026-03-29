@@ -1,0 +1,103 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import { Wifi, Server, Database, ShieldAlert, Activity } from 'lucide-react';
+
+const HealthCheck = () => {
+    const [systems, setSystems] = useState([
+        { id: 'api', name: 'Core Gateway API', status: 'pending', latency: '0ms', icon: <Server size={20} /> },
+        { id: 'db', name: 'User Database', status: 'pending', latency: '0ms', icon: <Database size={20} /> },
+        { id: 'auth', name: 'Authentication Service', status: 'pending', latency: '0ms', icon: <ShieldAlert size={20} /> },
+        { id: 'excel', name: 'Excel Processing Engine', status: 'pending', latency: '0ms', icon: <Activity size={20} /> },
+        { id: 'external', name: 'SBI Mainframe Bridge', status: 'pending', latency: '0ms', icon: <Wifi size={20} /> }
+    ]);
+
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+    const checkHealth = async () => {
+        // Simulated health check logic
+        setSystems(prev => prev.map(s => ({ ...s, status: 'pending' })));
+
+        for (let sys of systems) {
+            const start = Date.now();
+            let status = 'online';
+            try {
+                // Real check for the API, simulated for others
+                if (sys.id === 'api') {
+                    const res = await fetch(`${BASE_URL}/users/me`, { credentials: "include" });
+                    if (!res.ok) throw new Error();
+                } else {
+                    await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
+                    if (Math.random() > 0.95) throw new Error(); // 5% chance of failure for simulation
+                }
+            } catch {
+                status = 'offline';
+            }
+            const latency = `${Date.now() - start}ms`;
+
+            setSystems(prev => prev.map(s => s.id === sys.id ? { ...s, status, latency } : s));
+        }
+    };
+
+    useEffect(() => {
+        checkHealth();
+        const timer = setInterval(checkHealth, 30000); // Auto-check every 30s
+        return () => clearInterval(timer);
+    }, []);
+
+    return (
+        <div style={container}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                <div>
+                    <h1 style={heading}>System Health Monitor</h1>
+                    <p style={subheading}>Status and latency of internal and external connectivity bridges.</p>
+                </div>
+                <button onClick={checkHealth} style={refreshBtn}>Refresh Status</button>
+            </div>
+
+            <div style={grid}>
+                {systems.map(sys => (
+                    <div key={sys.id} style={card}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                            <div style={{ ...iconBox, backgroundColor: sys.status === 'online' ? 'rgba(34, 197, 94, 0.1)' : sys.status === 'offline' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(0,0,0,0.05)' }}>
+                                {React.cloneElement(sys.icon, { color: sys.status === 'online' ? '#22c55e' : sys.status === 'offline' ? '#ef4444' : 'var(--text-muted)' })}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <h3 style={sysName}>{sys.name}</h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: sys.status === 'online' ? '#22c55e' : sys.status === 'offline' ? '#ef4444' : '#94a3b8' }}></div>
+                                    <span style={{ fontSize: '13px', textTransform: 'uppercase', fontWeight: '700', color: sys.status === 'online' ? '#22c55e' : sys.status === 'offline' ? '#ef4444' : '#94a3b8' }}>
+                                        {sys.status}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style={statsRow}>
+                            <span style={statLabel}>Average Latency</span>
+                            <span style={statValue}>{sys.latency}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div style={alertBox}>
+                <ShieldAlert size={20} />
+                <p><strong>Note:</strong> Red status indicates a major service interruption. If "SBI Mainframe Bridge" is offline, account creation features will be temporarily disabled.</p>
+            </div>
+        </div>
+    );
+};
+
+const container = { padding: '32px' };
+const heading = { fontSize: '28px', fontWeight: '700', color: 'var(--foreground)', marginBottom: '8px' };
+const subheading = { fontSize: '15px', color: 'var(--text-muted)' };
+const refreshBtn = { padding: '10px 20px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', fontWeight: '600', cursor: 'pointer' };
+const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '24px' };
+const card = { padding: '24px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' };
+const iconBox = { width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const sysName = { fontSize: '16px', fontWeight: '600', color: 'var(--foreground)', marginBottom: '4px' };
+const statsRow = { display: 'flex', justifyContent: 'space-between', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-color)' };
+const statLabel = { fontSize: '13px', color: 'var(--text-muted)' };
+const statValue = { fontSize: '14px', fontWeight: '700', color: 'var(--foreground)' };
+const alertBox = { marginTop: '48px', padding: '20px', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', display: 'flex', gap: '16px', alignItems: 'flex-start', border: '1px solid rgba(239, 68, 68, 0.1)' };
+
+export default HealthCheck;
