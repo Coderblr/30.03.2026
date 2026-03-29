@@ -1,0 +1,353 @@
+
+'use client';
+import { useEffect, useState, useMemo } from "react";
+import { styles } from "../../styles/AppStyles";
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, Cell
+} from 'recharts';
+
+export default function AdminDashboard() {
+    const [response, setResponse] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [search, setSearch] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+    const usersPerPage = 10;
+
+    //  // Safe access for Next.js
+    useEffect(() => {
+        fetchAdminDashboard();
+        fetchAllUsers();
+    }, []);
+
+    async function fetchAdminDashboard() {
+        setLoading(true);
+        try {
+            const res = await fetch(`${BASE_URL}/admin/dashboard`, {
+                credentials: "include", method: "POST", headers: {
+                    Accept: "application/json",
+                },
+            });
+
+            if (!res.ok) throw new Error("Failed to load dashboard");
+            const data = await res.json();
+            setResponse(data);
+        } catch (err) {
+            setError(err.message || "Failed to load dashboard");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function fetchAllUsers() {
+        try {
+            const res = await fetch(`${BASE_URL}/admin/users`, {
+                credentials: "include", method: "POST", headers: {
+                    Accept: "application/json",
+                },
+            });
+
+            if (!res.ok) throw new Error("Failed to load users");
+            const data = await res.json();
+            setUsers(data);
+        } catch (err) {
+            setError(err.message || "Failed to load users");
+        }
+    }
+
+    const filteredUsers = users.filter((u) =>
+        `${u.username} ${u.firstName} ${u.lastName}`
+            .toLowerCase()
+            .includes(search.toLowerCase())
+    );
+
+    // Pagination logic
+    const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+    const indexOfLastUser = currentPage * usersPerPage;
+    const indexOfFirstUser = indexOfLastUser - usersPerPage;
+    const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+
+    // --- ANALYTICS DATA ---
+    const deptData = useMemo(() => {
+        const counts = {};
+        users.forEach(u => {
+            const dept = u.departmentCode || "Unknown";
+            counts[dept] = (counts[dept] || 0) + 1;
+        });
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    }, [users]);
+
+    const roleData = useMemo(() => {
+        const counts = {};
+        users.forEach(u => {
+            const role = u.role || "User";
+            counts[role] = (counts[role] || 0) + 1;
+        });
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    }, [users]);
+
+    const COLORS = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2'];
+
+    return (
+        <div style={page}>
+            {/* HEADER */}
+            <h1 style={heading}>Admin Dashboard</h1>
+
+            {loading && <div>Loading...</div>}
+            {error && <div>{error}</div>}
+
+            {/* DASHBOARD INFO */}
+            {response && (
+                <div style={card}>
+                    <h2 style={cardTitle}>{response.message}</h2>
+                    <p style={mutedText}>
+                        Logged in as {response.username}
+                    </p>
+                </div>
+            )}
+
+            {/* ANALYTICS SECTION */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px', marginBottom: '24px' }}>
+                <div style={card}>
+                    <h2 style={{ ...cardTitle, marginBottom: '20px' }}>User Distribution by Department</h2>
+                    <div style={{ height: '300px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={deptData}>
+                                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                                <XAxis dataKey="name" stroke="var(--foreground)" fontSize={12} />
+                                <YAxis stroke="var(--foreground)" fontSize={12} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--foreground)' }}
+                                />
+                                <Legend />
+                                <Bar dataKey="value" name="Users" fill="var(--accent-blue)" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div style={card}>
+                    <h2 style={{ ...cardTitle, marginBottom: '20px' }}>User Roles Breakdown</h2>
+                    <div style={{ height: '300px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={roleData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={80}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {roleData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--foreground)' }}
+                                />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* USERS SECTION */}
+            <div style={card}>
+                <div style={tableHeader}>
+                    <h2 style={cardTitle}>User Management</h2>
+                    <input
+                        type="text"
+                        placeholder="Search users..."
+                        value={search}
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            setCurrentPage(1);
+                        }}
+                        style={searchInput}
+                    />
+                </div>
+
+                <table style={table}>
+                    <thead>
+                        <tr>
+                            <th style={tableHeaderCell}>#</th>
+                            <th style={tableHeaderCell}>Username</th>
+                            <th style={tableHeaderCell}>Full Name</th>
+                            <th style={tableHeaderCell}>Department</th>
+                            <th style={tableHeaderCell}>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {currentUsers.map((user, index) => (
+                            <tr key={user.username} style={tableRow}>
+                                <td style={tableCell}>{indexOfFirstUser + index + 1}</td>
+                                <td style={{ ...tableCell, ...usernameCell }}>{user.username}</td>
+                                <td style={tableCell}>{user.firstName} {user.lastName}</td>
+                                <td style={tableCell}>{user.departmentCode}</td>
+                                <td style={tableCell}>
+                                    <span style={badge(user.role)}>{user.role}</span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+
+                {filteredUsers.length === 0 && (
+                    <div>No users found</div>
+                )}
+
+                {/* Pagination */}
+                {filteredUsers.length > 0 && (
+                    <div style={paginationContainer}>
+                        <button
+                            onClick={() => setCurrentPage(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            style={paginationButton}
+                        >
+                            Previous
+                        </button>
+                        <span style={paginationInfo}>
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <button
+                            onClick={() => setCurrentPage(currentPage + 1)}
+                            disabled={currentPage === totalPages}
+                            style={paginationButton}
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ===================== */
+/* 🎨 UI STYLES */
+/* ===================== */
+
+const page = {
+    padding: "32px",
+    backgroundColor: "var(--background)",
+    minHeight: "100vh",
+    color: "var(--foreground)",
+};
+
+const heading = {
+    fontSize: "28px",
+    fontWeight: "700",
+    marginBottom: "24px",
+    color: "var(--foreground)",
+};
+
+const card = {
+    background: "var(--card-bg)",
+    padding: "24px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
+    marginBottom: "24px",
+    border: "1px solid var(--border-color)",
+};
+
+const cardTitle = {
+    fontSize: "18px",
+    fontWeight: "600",
+    marginBottom: "0px",
+    color: "var(--foreground)",
+};
+
+const mutedText = {
+    color: "var(--text-muted)",
+    fontSize: "14px",
+};
+
+const tableHeader = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "12px",
+};
+
+const searchInput = {
+    padding: "10px 16px",
+    borderRadius: "8px",
+    border: "1px solid var(--border-color)",
+    backgroundColor: "var(--background)",
+    color: "var(--foreground)",
+    minWidth: "300px",
+    fontSize: "14px",
+    outline: "none",
+};
+
+const table = {
+    width: "100%",
+    borderCollapse: "collapse",
+};
+
+const tableHeaderCell = {
+    padding: "16px 12px",
+    textAlign: "left",
+    borderBottom: "2px solid var(--border-color)",
+    fontWeight: "600",
+    color: "var(--foreground)",
+    fontSize: "14px",
+};
+
+const tableRow = {
+    borderBottom: "1px solid var(--border-color)",
+    transition: "background-color 0.2s ease",
+};
+
+const tableCell = {
+    padding: "12px",
+};
+
+const usernameCell = {
+    fontWeight: "600",
+    color: "var(--accent-blue)",
+};
+
+const badge = role => ({
+    padding: "4px 10px",
+    borderRadius: "12px",
+    fontSize: "12px",
+    fontWeight: "500",
+    textTransform: "capitalize",
+    backgroundColor: role === "admin" ? "#fee2e2" : "#e0f2fe",
+    color: role === "admin" ? "#991b1b" : "#075985",
+});
+
+const paginationContainer = {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: "16px",
+    marginTop: "20px",
+};
+
+const paginationButton = {
+    padding: "8px 16px",
+    borderRadius: "8px",
+    border: "1px solid var(--border-color)",
+    backgroundColor: "var(--card-bg)",
+    color: "var(--foreground)",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+};
+
+const paginationInfo = {
+    fontSize: "14px",
+    fontWeight: "500",
+};
+
+
