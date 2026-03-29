@@ -1,0 +1,432 @@
+
+'use client';
+
+import { useState } from 'react';
+import {
+    Home,
+    FileText,
+    DollarSign,
+    User,
+    TrendingUp,
+    TrendingDown,
+    Shield,
+    CreditCard,
+    PlusCircle,
+    Bug,
+    Users,
+    TicketCheck,
+    Landmark,
+    WalletCards,
+    ShieldPlus,
+    Sheet,
+    UserRound,
+    Sun,
+    Moon,
+    Wifi,
+    Megaphone,
+    History,
+    Upload,
+    Download
+} from 'lucide-react';
+
+import { styles } from '../../styles/AppStyles';
+
+/* -------------------- HELPERS -------------------- */
+const isCategoryActive = (category, activeService) =>
+    category.services?.some(
+        s =>
+            s.id === activeService ||
+            s.subServices?.some(sub => sub.id === activeService)
+    );
+
+/* -------------------- MENU CONFIG -------------------- */
+const serviceCategories = [
+    {
+        id: 'dashboard',
+        name: 'Dashboard',
+        icon: <Home size={16} />,
+        services: [{ id: 'home', name: 'Dashboard', icon: <Home size={14} /> }]
+    },
+    {
+        id: 'teller',
+        name: 'Teller Operations',
+        icon: <UserRound size={16} />,
+        services: [
+            { id: 'tellercreation', name: 'Teller Creation', icon: <UserRound size={14} /> },
+            { id: 'tellerreset', name: 'Teller Reset', icon: <UserRound size={14} /> },
+            { id: 'tellersignon', name: 'Teller Signon', icon: <UserRound size={14} /> }
+        ]
+    },
+    {
+        id: 'customer',
+        name: 'Customer Operations',
+        icon: <Users size={16} />,
+        services: [
+            { id: 'cif', name: 'CIF Creation', icon: <FileText size={14} /> },
+            // { id: 'cifv2', name: 'CIF with Customer Type', icon: <FileText size={14} /> },
+            { id: 'pancif', name: 'CIF WITH PAN', icon: <TicketCheck size={14} /> },
+            { id: 'ckyc', name: 'CKYC', icon: <Shield size={14} /> },
+            { id: 'social', name: 'Social Attribute', icon: <Users size={14} /> },
+            { id: 'amend', name: 'CIF Amend', icon: <FileText size={14} /> },
+            { id: 'noc', name: 'NOC', icon: <ShieldPlus size={14} /> },
+            { id: 'cifscrutiny', name: 'CIF Scrutiny', icon: <FileText size={14} /> },
+            { id: 'form60', name: 'Form 60', icon: <FileText size={14} /> },
+        ]
+    },
+    {
+        id: 'accounts',
+        name: 'Account Management',
+        icon: <User size={16} />,
+        services: [
+            { id: 'deposit', name: 'Deposit Account', icon: <DollarSign size={14} /> },
+            { id: 'loan', name: 'Loan Account', icon: <TrendingUp size={14} /> },
+            { id: 'ccod', name: 'CCOD Account', icon: <CreditCard size={14} /> },
+            { id: 'ppf', name: 'PPF', icon: <Landmark size={14} /> },
+            { id: 'mod', name: 'MOD', icon: <FileText size={14} /> },
+            { id: 'rd', name: 'RD', icon: <WalletCards size={14} /> },
+            { id: 'kcc', name: 'KCC', icon: <FileText size={14} /> },
+            { id: 'fo', name: 'Full Onboarding', icon: <PlusCircle size={14} /> },
+            { id: 'accountclosure', name: 'Account Closure', icon: <FileText size={14} /> },
+            { id: 'contigent', name: 'Contingent Account', icon: <FileText size={14} /> },
+            // { id: 'fatka', name: 'Fatka', icon: <FileText size={14} /> },
+            // { id: 'fo', name: 'Full Onboarding', icon: <PlusCircle size={14} /> }
+        ]
+    },
+
+    {
+        id: 'enquiry',
+        name: 'Enquiry',
+        icon: <User size={16} />,
+        services: [
+            { id: 'accountenquiry', name: 'Account Enquiry', icon: <FileText size={14} /> },
+            { id: 'customerenquiry', name: 'Customer Enquiry', icon: <FileText size={14} /> },
+            { id: 'mobileenquiry', name: 'Mobile Enquiry', icon: <ShieldPlus size={14} /> },
+
+        ]
+    },
+
+
+    {
+        id: 'financial',
+        name: 'Financial Services',
+        icon: <DollarSign size={16} />,
+        services: [
+            {
+                id: 'fundtransfer',
+                name: 'Fund Transfer',
+                icon: <TrendingUp size={14} />,
+                subServices: [
+                    { id: 'acc_to_acc', name: 'Account to Account' },
+                    // { id: 'acc_to_bgl', name: 'Account to BGL' },
+                    // { id: 'bgl_to_acc', name: 'BGL to Account' },
+                    { id: 'bgl_to_bgl', name: 'BGL to BGL' }
+                ]
+            },
+            { id: 'cash_withdrawal', name: 'Cash Withdrawal', icon: <TrendingDown size={14} /> },
+            // { id: 'fund_deposit', name: 'Fund Deposit', icon: <PlusCircle size={14} /> }
+        ]
+    },
+    {
+        id: 'reporting',
+        name: 'Excel Batch',
+        icon: <Sheet size={16} />,
+        services: [{ id: 'excel', name: 'Excel Batch', icon: <Sheet size={14} /> }]
+    },
+    {
+        id: 'error',
+        name: 'Error Resolution',
+        icon: <Bug size={16} />,
+        services: [{ id: 'error', name: 'Error Resolution', icon: <Bug size={14} /> }]
+    },
+
+    {
+        id: 'user-teller',
+        name: 'Teller Operations',
+        icon: <UserRound size={16} />,
+        services: [
+            { id: 'tellerreset', name: 'Teller Reset', icon: <UserRound size={14} /> },
+            { id: 'tellersignon', name: 'Teller Signon', icon: <UserRound size={14} /> }
+        ]
+    },
+    {
+        id: 'admin',
+        name: 'Admin Panel',
+        icon: <Shield size={18} />,
+        services: [
+            { id: 'admin_dashboard', name: 'Dashboard', icon: <Home size={16} /> },
+            { id: 'user_management', name: 'User Management', icon: <Users size={16} /> },
+            { id: 'activity_logs', name: 'Activity Logs', icon: <FileText size={16} /> },
+            { id: 'admin_create_user', name: 'Create User', icon: <FileText size={16} /> },
+            { id: 'reset_password', name: 'Reset Password', icon: <FileText size={16} /> },
+            { id: 'unlock_user', name: 'Unlock User', icon: <FileText size={16} /> },
+            { id: 'admin_broadcast', name: 'System Broadcast', icon: <Megaphone size={16} /> },
+            { id: 'admin_health', name: 'System Health', icon: <Wifi size={16} /> },
+            { id: 'admin_audit', name: 'Advanced Audit', icon: <History size={16} /> }
+        ]
+    }
+];
+
+/* -------------------- COMPONENT -------------------- */
+export default function Sidebar({
+    sidebarOpen,
+    setActiveService,
+    user,
+    darkMode,
+    onToggleDarkMode
+}) {
+    const [expandedCategory, setExpandedCategory] = useState(null);
+    const [expandedService, setExpandedService] = useState(null);
+
+    if (!sidebarOpen) return null;
+
+    // // ✅ CORRECT ROLE CHECK
+    const isAdmin = user?.userType === 1 || user?.userType === "1";
+
+    // console.log("SIDEBAR USER:", user);
+    // console.log("SIDEBAR isAdmin:", isAdmin);
+
+    // ✅ FILTER ADMIN + TELLER FOR ADMIN ONLY
+    const filteredCategories = serviceCategories.filter(cat => {
+        // Admins only: full Teller ops and Admin Panel
+        if (cat.id === 'teller' || cat.id === 'admin') {
+            return isAdmin;
+        }
+        // Standard users only: restricted Teller ops
+        if (cat.id === 'user-teller') {
+            return !isAdmin;
+        }
+
+        return true;
+    });
+
+    const toggleCategory = id =>
+        setExpandedCategory(prev => (prev === id ? null : id));
+
+    return (
+        <div style={{
+            ...styles.sidebar,
+            width: '30vh',
+            fontSize: '13px',
+            backgroundColor: "transparent",
+            // backgroungImage: "url('/public/dashboard/Rectangle.svg)",
+            background: "linear-gradient(180deg, #1c2fa3, #0bb1d3",
+            backgroundSize: "cover",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+            // height: "100%",
+            borderTopRightRadius: "20px",
+            borderBottomRightRadius: "20px",
+            // height: "988px",
+
+            // position: "relative",
+            // top: "64px",
+            // left: 0,
+
+            color: "white",
+            // zIndex: 1
+        }}>
+
+
+            {/* <div style={{ padding: "10px", textAlign: 'center'}}>
+        <img
+        src="/dashboard/Rectangle 17818.svg"
+        alt="rectangle"
+        style={{
+          width: "100%",
+          height: 'auto',
+          borderRadius: '6px'
+        }}
+        />
+      </div> */}
+
+            <div style={{ padding: '0.75rem' }}>
+                <p style={{ ...styles.sidebarLabel, fontSize: '15px', marginBottom: '0.5rem', color: 'white' }}>
+                    MAIN MENU
+                </p>
+
+                {filteredCategories.map(category => {
+                    const active =
+                        expandedCategory === category.id ||
+                        isCategoryActive(category, activeService);
+                    const hasMultiple = category.services.length > 1;
+
+                    return (
+                        <div key={category.id} style={{ marginBottom: '0.25rem' }}>
+                            <button
+                                onClick={() =>
+                                    hasMultiple
+                                        ? toggleCategory(category.id)
+                                        : setActiveService(category.services[0].id)
+                                }
+                                style={{
+                                    ...styles.sidebarBtn,
+                                    backgroundColor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+                                    // color: active ? '#1976d2' : '#555',
+                                    color: active ? '#ffffff' : 'rgba(255,255,255,0.85)',
+                                    fontWeight: active ? '700' : '500',
+                                    fontSize: "13.5px",
+                                    borderLeft: active ? '4px solid #ffffff' : '4px solid transparent',
+                                    paddingLeft: '10px',
+                                    boxShadow: active ? '0 2px 4px rgba(0,0,0,0.2)' : 'none'
+                                }}
+                            >
+                                {category.icon}
+                                <span style={{ flex: 1, textAlign: 'left' }}>
+                                    {category.name}
+                                </span>
+
+                                {hasMultiple && (
+                                    <span style={{ fontSize: '10px', opacity: 0.6 }}>
+                                        {expandedCategory === category.id ? '▼' : '▶'}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* added for sub service */}
+
+                            {/* SERVICES */}
+                            {hasMultiple && expandedCategory === category.id && (
+                                <div style={{ marginTop: '0.25rem', marginLeft: '0.5rem' }}>
+                                    {category.services.map(service => {
+                                        const isOpen = expandedService === service.id;
+
+                                        return (
+                                            <div key={service.id}>
+                                                <button
+                                                    onClick={() => {
+                                                        if (service.subServices) {
+                                                            setExpandedService(isOpen ? null : service.id);
+                                                        } else {
+                                                            setActiveService(service.id);
+                                                            setExpandedService(null);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        ...styles.sidebarBtn,
+                                                        backgroundColor:
+                                                            activeService === service.id || isOpen
+                                                                ? '#ffffff'
+                                                                : 'transparent',
+                                                        color:
+                                                            activeService === service.id || isOpen
+                                                                ? '#0f2a6b'
+                                                                : 'rgba(255,255,255,0.9)',
+                                                        fontWeight:
+                                                            activeService === service.id || isOpen
+                                                                ? '700'
+                                                                : '500',
+                                                        padding: '0.4rem 0.75rem',
+                                                        marginBottom: '0.15rem',
+                                                        // borderLeft: '2px solid #e0e0e0',
+                                                        borderRadius: '4px',
+                                                        width: '100%',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.5rem',
+                                                        fontSize: '12.5px',
+                                                        borderLeft: activeService === service.id ? '4px solid #ffffff' : '4px solid transparent',
+                                                        paddingLeft: '10px',
+                                                        boxShadow: active ? '0 2px 4px rgba(0,0,0,0.2)' : 'none',
+                                                        paddingLeft: "12px",
+                                                        transition: "all 0.2s ease",
+                                                        borderLeft: active ? '4px solid #ffffff' : '4px solid transparent',
+                                                    }}
+                                                >
+                                                    {service.icon}
+                                                    <span style={{ flex: 1, textAlign: 'left' }}>
+                                                        {service.name}
+                                                    </span>
+                                                    {service.subServices && (
+                                                        <span style={{ fontSize: '10px', opacity: 0.6 }}>
+                                                            {isOpen ? '▼' : '▶'}
+                                                        </span>
+                                                    )}
+                                                </button>
+
+                                                {/* SUB SERVICES */}
+                                                {service.subServices && isOpen && (
+                                                    <div style={{ marginLeft: '1.5rem', marginTop: '0.15rem' }}>
+                                                        {service.subServices.map(sub => (
+                                                            <button
+                                                                key={sub.id}
+                                                                onClick={() => setActiveService(sub.id)}
+                                                                style={{
+                                                                    background: activeService === sub.id ? 'rgba(255,255,255,0.15)' : 'transparent',
+                                                                    border: 'none',
+                                                                    padding: '0.4rem 0.75rem',
+                                                                    fontSize: '12px',
+                                                                    textAlign: 'left',
+                                                                    width: '100%',
+                                                                    cursor: 'pointer',
+                                                                    color: activeService === sub.id ? '#ffffff' : 'rgba(255,255,255,0.85)',
+                                                                    fontWeight: activeService === sub.id ? '600' : '400',
+                                                                    borderRadius: '4px',
+                                                                    marginBottom: '0.1rem',
+                                                                    transition: "all 0.2s ease",
+                                                                    borderLeft: activeService === sub.id ? '4px solid #ffffff' : '4px solid transparent',
+                                                                }}
+                                                                onMouseEnter={e => {
+                                                                    if (activeService !== sub.id) {
+                                                                        e.target.style.backgroundColor = 'rgba(255,255,255,0.15)';
+                                                                    }
+                                                                }}
+                                                                onMouseLeave={e => {
+                                                                    e.target.style.backgroundColor = 'transparent';
+                                                                }}
+                                                            >
+                                                                • {sub.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* {hasMultiple && expandedCategory === category.id && (
+                <div style={{ marginLeft: '0.5rem' }}>
+                  {category.services.map(service => (
+                    <button
+                      key={service.id}
+                      onClick={() => setActiveService(service.id)}
+                      style={styles.sidebarBtn}
+                    >
+                      {service.icon}
+                      {service.name}
+                    </button>
+                  ))}
+                </div>
+              )} */}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* THEME TOGGLE AT BOTTOM */}
+            <div style={{
+                marginTop: 'auto',
+                padding: '1rem',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(0,0,0,0.1)'
+            }}>
+                <button
+                    onClick={onToggleDarkMode}
+                    style={{
+                        ...styles.sidebarBtn,
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        color: 'white',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        border: '1px solid rgba(255,255,255,0.2)'
+                    }}
+                >
+                    {darkMode ? <Sun size={16} /> : <Moon size={16} />}
+                    <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>
+                </button>
+            </div>
+        </div>
+    );
+}
+
