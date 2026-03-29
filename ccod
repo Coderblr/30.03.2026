@@ -1,0 +1,257 @@
+"use client";
+
+import { useState } from "react";
+import { styles } from "../../styles/AppStyles";
+
+export default function CcodAccountView() {
+    const [region, setRegion] = useState("O");
+    const [cif, setCif] = useState("");
+    const [prod_code, setProd_code] = useState("");
+    const [amount, setAmount] = useState("");
+    const [no_acc, setNo_acc] = useState(1);
+    const [response, setResponse] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [formErrors, setFormErrors] = useState({});
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        const errors = {};
+
+        // ✅ CIF validation: exactly 11 digits
+        if (!/^\d{11}$/.test(cif)) {
+            errors.cif = "Please enter correct 11 digit CIF";
+        }
+
+        // ✅ No. of Accounts validation
+        if (!no_acc || Number(no_acc) < 1 || Number(no_acc) > 10) {
+            errors.no_acc = "Number of accounts must be between 1 and 10";
+        }
+
+        if (Object.keys(errors).length > 0) {
+            setFormErrors(errors);
+            return;
+        }
+
+        setFormErrors({});
+        setLoading(true);
+        setError(null);
+        setResponse([]);
+
+        const url = `${BASE_URL}/ccod_account_creation`;
+
+        try {
+            const res = await fetch(url, {
+                credentials: "include",
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    region: region,
+                    cif: cif,
+                    p_code: prod_code,
+                    amount: amount,
+                    no_acc: parseInt(no_acc, 10),
+                }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.detail || `API error: ${res.status} ${res.statusText}`);
+            }
+
+            const data = await res.json();
+            setResponse(Array.isArray(data) ? data : [data]);
+        } catch (err) {
+            setError(err.message);
+            setResponse([
+                { res_data: JSON.stringify({ ERROR_DESCRIPTION: err.message }) },
+            ]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const downloadCsv = () => {
+        if (!response || response.length === 0) {
+            alert("No data to download.");
+            return;
+        }
+
+        const headers = [
+            "Region",
+            "Customer Number",
+            "Product Code",
+            "Status",
+            "Account Number",
+        ];
+
+        let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+
+        response.forEach((item) => {
+            try {
+                const parsedResData = JSON.parse(item.res_data || "{}");
+                const row = [
+                    parsedResData.REGION || region,
+                    parsedResData.CUSTOMER_NUMBER || cif,
+                    parsedResData.PRODUCT_CODE || prod_code,
+                    parsedResData.STATUS || (item.status || ""),
+                    parsedResData.ACCOUNT_NUMBER || (item.account_number || ""),
+                ]
+                    .map((field) => `"${field}"`)
+                    .join(",");
+                csvContent += row + "\n";
+            } catch { }
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "ccod_account_data.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    return (
+        <div>
+            <div style={styles.pageHeader}>
+                <h1 style={styles.pageTitle}>Create CCOD Account</h1>
+                <p style={styles.pageSubtitle}>Generate Cash Credit / Overdraft accounts</p>
+            </div>
+
+            <div style={styles.formCard}>
+                <form onSubmit={handleSubmit}>
+                    <div style={styles.formGrid}>
+                        {/* REGION */}
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Region</label>
+                            <select
+                                value={region}
+                                onChange={(e) => setRegion(e.target.value)}
+                                style={styles.select}
+                                required
+                            >
+                                <option value="O">O - UAT</option>
+                                <option value="X">X - UAT</option>
+                                <option value="Y">Y - UAT</option>
+                                <option value="Z">Z - UAT</option>
+                                <option value="K">K - Pre-Prod</option>
+                                <option value="J">J - Pre-Prod</option>
+                                <option value="R1">R1 - Pre-Prod</option>
+                                <option value="Y2">Y2 - Pre-Prod</option>
+                                <option value="L">L - Pre-Prod</option>
+                                <option value="C">C - Pre-Prod</option>
+                            </select>
+                        </div>
+
+                        {/* CIF */}
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>CIF Number</label>
+                            <input
+                                type="text"
+                                value={cif}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (!/^\d*$/.test(value) || value.length > 11) {
+                                        setFormErrors({ ...formErrors, cif: "Please enter correct 11 digit CIF" });
+                                        return;
+                                    }
+                                    setCif(value);
+                                    setFormErrors({ ...formErrors, cif: "" });
+                                }}
+                                style={styles.input}
+                                placeholder="Enter 11-digit CIF"
+                                required
+                            />
+                            {formErrors.cif && <div style={styles.fieldError}>{formErrors.cif}</div>}
+                        </div>
+
+                        {/* PRODUCT CODE */}
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Product Type</label>
+                            <select
+                                value={prod_code}
+                                onChange={(e) => setProd_code(e.target.value)}
+                                style={styles.select}
+                                required
+                            >
+                                <option value="">Select Product</option>
+                                <option value="50121101">Cash Credit - 50121101</option>
+                                <option value="50131101">Overdraft - 50131101</option>
+                            </select>
+                        </div>
+
+                        {/* AMOUNT / LIMIT */}
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Limit Amount</label>
+                            <input
+                                type="number"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                style={styles.input}
+                                placeholder="Enter limit amount"
+                                required
+                            />
+                        </div>
+
+                        {/* NO OF ACCOUNTS */}
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>No. of Accounts</label>
+                            <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={no_acc}
+                                onChange={(e) => setNo_acc(e.target.value)}
+                                style={styles.input}
+                            />
+                            {formErrors.no_acc && <div style={styles.fieldError}>{formErrors.no_acc}</div>}
+                        </div>
+                    </div>
+
+                    <button type="submit" style={styles.primaryButton} disabled={loading}>
+                        {loading ? "Submitting..." : "Submit"}
+                    </button>
+                </form>
+            </div>
+
+            {(error || response.length > 0) && (
+                <div style={styles.resultsCard}>
+                    {error && <div style={styles.errorMsg}>{error}</div>}
+
+                    {response.length > 0 && (
+                        <>
+                            <div style={styles.resultsHeader}>
+                                <h3 style={styles.resultsTitle}>Generated Records ({response.length})</h3>
+                                <button onClick={downloadCsv} style={styles.downloadButton}>Download CSV</button>
+                            </div>
+
+                            <div style={styles.resultsList}>
+                                {response.map((item, index) => {
+                                    let parsed = {};
+                                    try {
+                                        parsed = JSON.parse(item.res_data || "{}");
+                                    } catch {
+                                        parsed = { ERROR_DESCRIPTION: item.res_data };
+                                    }
+                                    return (
+                                        <div key={index} style={styles.resultItem}>
+                                            <p><strong>Status:</strong> {parsed.STATUS || item.status || "N/A"}</p>
+                                            {parsed.ACCOUNT_NUMBER && <p><strong>Account Number:</strong> {parsed.ACCOUNT_NUMBER}</p>}
+                                            {item.account_number && <p><strong>Account Number:</strong> {item.account_number}</p>}
+                                            {parsed.ERROR_DESCRIPTION && <p style={styles.errorText}><strong>Error:</strong> {parsed.ERROR_DESCRIPTION}</p>}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
