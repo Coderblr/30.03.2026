@@ -1,0 +1,128 @@
+'use client';
+import React, { useState } from 'react';
+
+const Broadcast = () => {
+    const [message, setMessage] = useState('');
+    const [duration, setDuration] = useState('60'); // minutes
+    const [loading, setLoading] = useState(false);
+    const [status, setStatus] = useState({ text: '', type: '' });
+
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+    const handleBroadcast = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setStatus({ text: '', type: '' });
+
+        try {
+            const response = await fetch(`${BASE_URL}/admin/broadcast`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, duration_mins: parseInt(duration) })
+            });
+
+            if (!response.ok) throw new Error('Failed to send broadcast');
+
+            setStatus({ text: 'Broadcast sent successfully!', type: 'success' });
+            setMessage('');
+
+            // Mock: For local development without backend, we'll use a local event
+            window.dispatchEvent(new CustomEvent('system-broadcast', {
+                detail: { message, expiry: Date.now() + (parseInt(duration) * 60000) }
+            }));
+
+        } catch (err) {
+            setStatus({ text: err.message, type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div style={container}>
+            <h1 style={heading}>System Announcements</h1>
+            <p style={subheading}>Broadcast an urgent message to all logged-in users. The message will appear as a scrolling banner at the top of their dashboard.</p>
+
+            <div style={card}>
+                <form onSubmit={handleBroadcast}>
+                    <div style={formGroup}>
+                        <label style={label}>Broadcast Message</label>
+                        <textarea
+                            required
+                            style={textarea}
+                            placeholder="e.g., System Maintenance scheduled for 5:00 PM today. Please save your work."
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                        />
+                    </div>
+
+                    <div style={formGroup}>
+                        <label style={label}>Visible Duration (Minutes)</label>
+                        <select
+                            style={select}
+                            value={duration}
+                            onChange={(e) => setDuration(e.target.value)}
+                        >
+                            <option value="5">5 Minutes</option>
+                            <option value="15">15 Minutes</option>
+                            <option value="30">30 Minutes</option>
+                            <option value="60">1 Hour</option>
+                            <option value="1440">24 Hours</option>
+                        </select>
+                    </div>
+
+                    {status.text && (
+                        <div style={{
+                            padding: '12px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            backgroundColor: status.type === 'success' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                            color: status.type === 'success' ? '#16a34a' : '#dc2626',
+                            fontSize: '14px',
+                            fontWeight: '600'
+                        }}>
+                            {status.text}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={loading || !message.trim()}
+                        style={{
+                            ...btn,
+                            opacity: loading || !message.trim() ? 0.6 : 1,
+                            cursor: loading || !message.trim() ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {loading ? 'Sending...' : 'Start Broadcast'}
+                    </button>
+                </form>
+            </div>
+
+            <div style={previewBox}>
+                <h3 style={{ fontSize: '14px', fontWeight: '700', marginBottom: '12px', color: 'var(--text-muted)' }}>LIVE PREVIEW</h3>
+                <div style={bannerPreview}>
+                    <div style={scrollingText}>
+                        {message || "No announcement active. Type a message above to see the preview."}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const container = { padding: '32px', maxWidth: '800px' };
+const heading = { fontSize: '28px', fontWeight: '700', marginBottom: '12px', color: 'var(--foreground)' };
+const subheading = { fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' };
+const card = { background: 'var(--card-bg)', padding: '32px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' };
+const formGroup = { marginBottom: '24px' };
+const label = { display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: 'var(--foreground)' };
+const textarea = { width: '100%', height: '120px', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--background)', color: 'var(--foreground)', fontSize: '15px', outline: 'none', resize: 'none' };
+const select = { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--background)', color: 'var(--foreground)', fontSize: '15px', outline: 'none' };
+const btn = { width: '100%', padding: '14px', borderRadius: '12px', border: 'none', backgroundColor: 'var(--accent-blue)', color: 'white', fontSize: '16px', fontWeight: '700', transition: 'all 0.2s ease' };
+const previewBox = { marginTop: '48px', borderTop: '1px solid var(--border-color)', paddingTop: '24px' };
+const bannerPreview = { width: '100%', height: '40px', backgroundColor: '#ef4444', overflow: 'hidden', position: 'relative', display: 'flex', alignItems: 'center', borderRadius: '8px' };
+const scrollingText = { whiteSpace: 'nowrap', position: 'absolute', paddingLeft: '100%', animation: 'scroll-banner 15s linear infinite', color: 'white', fontWeight: '700', fontSize: '14px' };
+
+export default Broadcast;
